@@ -56,6 +56,12 @@ def loadseq(filename):
     splitdata = [i[0].split("\n",1)+[i[1]] for i in splitdata]
     return {i[0]:(i[1].strip(), i[2].strip()) for i in splitdata}
 
+# Loading the sequence data in a fasta format, with sequence and headers.
+def readFasta(filename):
+    raw = open(filename, "r").read().split(">")
+    split = [i.split("\n") for i in raw[1:]]
+    return {i[0]:i[1] for i in split}
+
 # Loading the sequence data.
 sequences = loadseq("sequences.txt")
 
