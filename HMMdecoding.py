@@ -62,9 +62,6 @@ def readFasta(filename):
     split = [i.split(" ") for i in raw[1:]]
     return {i[0]:i[1] for i in split}
 
-# Loading the sequence data.
-sequences = loadseq("sequences.txt")
-
 # Calculating the log likelihood of the joint probability
 def loglikelihood(seqpair, HMM):
 
@@ -88,5 +85,11 @@ def loglikelihood(seqpair, HMM):
     return result
 
 # Loading the hidden markov model data.
-hmm = loadHMM("test.hmm")
+hmm = loadHMM("hmm-tm.txt")
 
+# Loading the sequence data.
+sequences = readFasta("sequences-project2.txt")
+
+print hmm.d
+
+print sequences
