@@ -89,4 +89,3 @@ def loglikelihood(seqpair, HMM):
 
 # Loading the hidden markov model data.
 hmm = loadHMM("test.hmm")
-
