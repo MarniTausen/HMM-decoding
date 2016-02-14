@@ -53,13 +53,14 @@ def loadHMM(filename):
 def loadseq(filename):
     rawdata = open(filename, "r").read().split(">")
     splitdata = [i.split("#") for i in rawdata[1:]]
-    splitdata = [i[0].split("\n",1)+[i[1]] for i in splitdata]
+    splitdata = [i[0].split("\n",1)+[i[2]] for i in splitdata]
     return {i[0]:(i[1].strip(), i[2].strip()) for i in splitdata}
 
 # Loading the sequence data in a fasta format, with sequence and headers.
 def readFasta(filename):
+    import re
     raw = open(filename, "r").read().replace("\n", " ").strip().split(">")
-    split = [i.split(" ") for i in raw[1:]]
+    split = [re.split("\s*", i) for i in raw[1:]]
     return {i[0]:i[1] for i in split}
 
 # Calculating the log likelihood of the joint probability
@@ -93,3 +94,9 @@ sequences = readFasta("sequences-project2.txt")
 print hmm.d
 
 print sequences
+
+def Viterbi():
+    pass
+
+def Posterior():
+    pass
