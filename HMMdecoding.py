@@ -91,6 +91,27 @@ hmm = loadHMM("hmm-tm.txt")
 # Loading the sequence data.
 sequences = readFasta("sequences-project2.txt")
 
+
+def loglikelihood_M(seqpair, HMM):
+    result = []
+    # Calculating for the initial pi and the initial emission
+    result.append(HMM.emi[HMM.states[seqpair[1][0]],HMM.obs[seqpair[0][0]]])
+    result[0] *= HMM.pi[HMM.states[seqpair[1][0]]]
+
+    # Storing the previous state.
+    prevstate = seqpair[1][0]
+
+    # Iterating over all of the remaining observations and latent states
+    for i in zip(seqpair[0], seqpair[1])[1:]:
+        # Transitions
+        trans = (HMM.trans[HMM.states[prevstate],HMM.states[i[1]]])
+        # Emissions
+        emi = HMM.emi[HMM.states[i[1]],HMM.obs[i[0]]]
+        result.append(trans*emi)
+        prevstate = i[1]
+
+    return result
+
 print hmm.d
 
 #print sequences
@@ -99,18 +120,32 @@ print hmm.d
 import numpy as np
 
 obs = sequences['KDGL_ECOLI']
+M = np.zeros((3,len(obs)))
 i = 'i'*len(obs)
 o = 'o'*len(obs)
-M = 'm'*len(obs) 
+m = 'M'*len(obs) 
 seqpair_i = (obs, i)
-print seqpair_i
+seqpair_o = (obs, o)
+seqpair_m = (obs, m)
+
 #print seqpair_i[1][0] # states 
 #print seqpair_i[0][1] # observables
-print loglikelihood(seqpair_i, hmm)
+prob_i = loglikelihood_M(seqpair_i, hmm)
+prob_o = loglikelihood_M(seqpair_o, hmm)
+prob_m = loglikelihood_M(seqpair_m, hmm)
+def filling_up(matrix, prob, position):
+    for i in range(len(prob)):
+        matrix[position,i] = prob[i]
+    return M
+
+M = filling_up(M, prob_i, 0)
+M = filling_up(M, prob_o, 1)
+M = filling_up(M, prob_m, 2)
+
+print M
 
 def Viterbi():
-    M = np.zeros(shape=(3,len(obs)))
-    # first build the M matrix (latents states, observable values)
+    pass
 
 def Posterior():
     pass
