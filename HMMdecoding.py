@@ -53,17 +53,15 @@ def loadHMM(filename):
 def loadseq(filename):
     rawdata = open(filename, "r").read().split(">")
     splitdata = [i.split("#") for i in rawdata[1:]]
-    splitdata = [i[0].split("\n",1)+[i[1]] for i in splitdata]
+    splitdata = [i[0].split("\n",1)+[i[2]] for i in splitdata]
     return {i[0]:(i[1].strip(), i[2].strip()) for i in splitdata}
 
 # Loading the sequence data in a fasta format, with sequence and headers.
 def readFasta(filename):
+    import re
     raw = open(filename, "r").read().replace("\n", " ").strip().split(">")
-    split = [i.split(" ") for i in raw[1:]]
+    split = [re.split("\s*", i) for i in raw[1:]]
     return {i[0]:i[1] for i in split}
-
-# Loading the sequence data.
-sequences = loadseq("sequences.txt")
 
 # Calculating the log likelihood of the joint probability
 def loglikelihood(seqpair, HMM):
@@ -88,4 +86,31 @@ def loglikelihood(seqpair, HMM):
     return result
 
 # Loading the hidden markov model data.
-hmm = loadHMM("test.hmm")
+hmm = loadHMM("hmm-tm.txt")
+
+# Loading the sequence data.
+sequences = readFasta("sequences-project2.txt")
+
+print hmm.d
+
+#print sequences
+# just taking one of the sequences to test
+
+import numpy as np
+
+obs = sequences['KDGL_ECOLI']
+i = 'i'*len(obs)
+o = 'o'*len(obs)
+M = 'm'*len(obs) 
+seqpair_i = (obs, i)
+print seqpair_i
+#print seqpair_i[1][0] # states 
+#print seqpair_i[0][1] # observables
+print loglikelihood(seqpair_i, hmm)
+
+def Viterbi():
+    M = np.zeros(shape=(3,len(obs)))
+    # first build the M matrix (latents states, observable values)
+
+def Posterior():
+    pass
