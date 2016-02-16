@@ -28,6 +28,13 @@ class HMMObject(object):
             result.append(x[i*n:n*(i+1)])
         return result
 
+
+def elog(x):
+    from math import log
+    if x <= 0:
+        return float("-inf")
+    return log(x)
+    
 # Loading the hidden markov model (hmm) data.
 # Fist by splitting the for each of the names.
 # Then collecting all of the data with the right labels in a dictionary.
@@ -43,9 +50,9 @@ def loadHMM(filename):
     labels = ["hidden", "observables", "pi", "transitions", "emissions"]
     d = {labels[i]:splitdata[i] for i in range(len(splitdata))}
     # Data conversion
-    d['pi'] = [float(i) for i in d['pi']]
-    d['transitions'] = [float(i) for i in d['transitions']]
-    d['emissions'] = [float(i) for i in d['emissions']]
+    d['pi'] = [elog(float(i)) for i in d['pi']]
+    d['transitions'] = [elog(float(i)) for i in d['transitions']]
+    d['emissions'] = [elog(float(i)) for i in d['emissions']]
     # Inputing the data into the HMMObject class.
     return HMMObject(d)
 
@@ -96,7 +103,7 @@ def loglikelihood_M(seqpair, HMM):
     result = []
     # Calculating for the initial pi and the initial emission
     result.append(HMM.emi[HMM.states[seqpair[1][0]],HMM.obs[seqpair[0][0]]])
-    result[0] *= HMM.pi[HMM.states[seqpair[1][0]]]
+    result[0] += HMM.pi[HMM.states[seqpair[1][0]]]
 
     # Storing the previous state.
     prevstate = seqpair[1][0]
@@ -107,12 +114,12 @@ def loglikelihood_M(seqpair, HMM):
         trans = (HMM.trans[HMM.states[prevstate],HMM.states[i[1]]])
         # Emissions
         emi = HMM.emi[HMM.states[i[1]],HMM.obs[i[0]]]
-        result.append(trans*emi)
+        result.append(trans+emi)
         prevstate = i[1]
 
     return result
 
-print hmm.d
+#print hmm.d
 
 #print sequences
 # just taking one of the sequences to test
@@ -142,10 +149,54 @@ M = filling_up(M, prob_i, 0)
 M = filling_up(M, prob_o, 1)
 M = filling_up(M, prob_m, 2)
 
-print M
+#print M
 
-def Viterbi():
-    pass
+def Viterbi(seq, hmm):
+    # Initialize the omega table
+    N = len(seq)
+    M = np.zeros((len(hmm.states), N))
+    M.fill(float("-inf"))
 
+    # Fill in the first column.
+    for v in hmm.states.values():
+        M[v,0] = hmm.pi[v]+hmm.emi[v,hmm.obs[seq[0]]]
+
+    # Fill in the remaining columns in the table.
+    n = 1
+    for i in seq[1:]:
+        o = hmm.obs[i]
+        for v in hmm.states.values():
+            if hmm.emi[v,o]!=float("-inf"):
+                for j in hmm.states.values():
+                    if hmm.trans[v,j]!=float("-inf"):
+                        M[v,n] = max([M[v,n], M[j, n-1]+hmm.emi[v,o]+hmm.trans[j,v]])
+        n += 1
+        
+    # Backtracking:
+    z = ['' for i in range(len(seq))]
+
+    # Find the last max:
+    z[N-1] = hmm.states.keys()[M[:,N-1].argmax()]
+    for n in range(N-1)[::-1]:
+        z[n] = hmm.states.keys()[M[:,n].argmax()]
+
+    #Backtrack.
+    for n in range(N-1)[::-1]:
+        temp = np.array([float("-inf") for i in range(len(hmm.states))])
+        o, ns = hmm.obs[seq[n+1]], hmm.states[z[n+1]]
+        for i in hmm.states.values():
+            if hmm.emi[i,o]!=float("-inf") and hmm.trans[i, ns]!=float("-inf"):
+                temp[i] = hmm.emi[i,o]+M[i,o]+hmm.trans[i, ns]
+        z[n] = hmm.states.keys()[temp.argmax()]
+
+    return z
+
+
+print "".join(Viterbi(obs, hmm))
+
+print "".join(Viterbi(sequences["RFBP_SALTY"], hmm))
+
+print "".join(Viterbi(sequences["FTSH_ECOLI"], hmm))
+            
 def Posterior():
     pass
