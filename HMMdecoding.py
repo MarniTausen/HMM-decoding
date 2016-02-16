@@ -181,9 +181,7 @@ def Viterbi(seq, hmm):
         z[n] = hmm.states.keys()[M[:,n].argmax()]
 
     z = ["o" if i=="i" else i for i in z]
-        
-    print "".join(z)
-    print loglikelihood((seq, z), hmm)
+
 
     #Backtrack.
     for n in range(N-1)[::-1]:
@@ -194,16 +192,21 @@ def Viterbi(seq, hmm):
         z[n] = hmm.states.keys()[temp.argmax()]
         #print
 
-    print "".join(z)
-    
-    return z
+    return "".join(z)
 
+#just printing the values
+for key in sorted(sequences):
+    temp_viterbi = Viterbi(sequences[key], hmm)
+    print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
 
-print loglikelihood((obs,"".join(Viterbi(obs, hmm))), hmm)
+#saving into a file:
+output = str()
+for key in sorted(sequences):
+    temp_viterbi = Viterbi(sequences[key], hmm)
+    output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
+file = open('output_viterbi.txt', "w")
+file.write(output)
+file.close()
 
-#print "".join(Viterbi(sequences["RFBP_SALTY"], hmm))
-
-#print "".join(Viterbi(sequences["FTSH_ECOLI"], hmm))
-            
 def Posterior():
     pass
