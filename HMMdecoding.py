@@ -76,8 +76,8 @@ def loglikelihood(seqpair, HMM):
     from math import log
 
     # Calculating for the initial pi and the initial emission
-    result = log(HMM.emi[HMM.states[seqpair[1][0]],HMM.obs[seqpair[0][0]]])
-    result += log(HMM.pi[HMM.states[seqpair[1][0]]])
+    result = HMM.emi[HMM.states[seqpair[1][0]],HMM.obs[seqpair[0][0]]]
+    result += HMM.pi[HMM.states[seqpair[1][0]]]
 
     # Storing the previous state.
     prevstate = seqpair[1][0]
@@ -85,9 +85,9 @@ def loglikelihood(seqpair, HMM):
     # Iterating over all of the remaining observations and latent states
     for i in zip(seqpair[0], seqpair[1])[1:]:
         # Transitions
-        result += log(HMM.trans[HMM.states[prevstate],HMM.states[i[1]]])
+        result += HMM.trans[HMM.states[prevstate],HMM.states[i[1]]]
         # Emissions
-        result += log(HMM.emi[HMM.states[i[1]],HMM.obs[i[0]]])
+        result += HMM.emi[HMM.states[i[1]],HMM.obs[i[0]]]
         prevstate = i[1]
 
     return result
@@ -165,11 +165,11 @@ def Viterbi(seq, hmm):
     n = 1
     for i in seq[1:]:
         o = hmm.obs[i]
-        for v in hmm.states.values():
-            if hmm.emi[v,o]!=float("-inf"):
+        for k in hmm.states.values():
+            if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
-                    if hmm.trans[v,j]!=float("-inf"):
-                        M[v,n] = max([M[v,n], M[j, n-1]+hmm.emi[v,o]+hmm.trans[j,v]])
+                    if hmm.trans[k,j]!=float("-inf"):
+                        M[k,n] = max([M[k,n], M[j, n-1]+hmm.emi[k,o]+hmm.trans[j,k]])
         n += 1
         
     # Backtracking:
@@ -180,23 +180,30 @@ def Viterbi(seq, hmm):
     for n in range(N-1)[::-1]:
         z[n] = hmm.states.keys()[M[:,n].argmax()]
 
+    z = ["o" if i=="i" else i for i in z]
+        
+    print "".join(z)
+    print loglikelihood((seq, z), hmm)
+
     #Backtrack.
     for n in range(N-1)[::-1]:
         temp = np.array([float("-inf") for i in range(len(hmm.states))])
         o, ns = hmm.obs[seq[n+1]], hmm.states[z[n+1]]
         for i in hmm.states.values():
-            if hmm.emi[i,o]!=float("-inf") and hmm.trans[i, ns]!=float("-inf"):
-                temp[i] = hmm.emi[i,o]+M[i,o]+hmm.trans[i, ns]
+            temp[i] = hmm.emi[i,o]+M[i,n]+hmm.trans[i, ns]
         z[n] = hmm.states.keys()[temp.argmax()]
+        #print
 
+    print "".join(z)
+    
     return z
 
 
-print "".join(Viterbi(obs, hmm))
+print loglikelihood((obs,"".join(Viterbi(obs, hmm))), hmm)
 
-print "".join(Viterbi(sequences["RFBP_SALTY"], hmm))
+#print "".join(Viterbi(sequences["RFBP_SALTY"], hmm))
 
-print "".join(Viterbi(sequences["FTSH_ECOLI"], hmm))
+#print "".join(Viterbi(sequences["FTSH_ECOLI"], hmm))
             
 def Posterior():
     pass
