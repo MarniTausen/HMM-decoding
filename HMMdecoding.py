@@ -31,7 +31,7 @@ class HMMObject(object):
 
 def elog(x):
     from math import log
-    if x <= 0:
+    if x == 0:
         return float("-inf")
     return log(x)
 
@@ -174,9 +174,9 @@ def Viterbi(seq, hmm):
     return "".join(z)
 
 #just printing the values
-for key in sorted(sequences):
-    temp_viterbi = Viterbi(sequences[key], hmm)
-    print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
+#for key in sorted(sequences):
+#    temp_viterbi = Viterbi(sequences[key], hmm)
+#    print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
 
 #saving into a file:
 output = str()
@@ -246,11 +246,11 @@ def Posterior(seq, hmm):
     
     return "".join(z)
 
-zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
+#zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
 
-print zobs
+#print zobs
 
-print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
+#print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 
 
 output = str()
@@ -258,5 +258,82 @@ for key in sorted(sequences):
     temp_post = Posterior(sequences[key], hmm)
     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
 file = open('output_posterior.txt', "w")
+file.write(output)
+file.close()
+
+from copy import deepcopy
+
+
+hmmP = deepcopy(hmm)
+
+for x in range(hmmP.emi.shape[0]):
+    for y in range(hmmP.emi.shape[1]):
+        hmmP.emi[x,y] = eexp(hmmP.emi[x,y])
+
+for x in range(hmmP.trans.shape[0]):
+    for y in range(hmmP.trans.shape[1]):
+        hmmP.trans[x,y] = eexp(hmmP.trans[x,y])
+
+for x in range(len(hmmP.pi)):
+    hmmP.emi[x,y] = eexp(hmmP.emi[x,y])
+
+def PosteriorScaled(seq, hmm):
+    # Initializing the tables
+    N = len(seq)
+    A = np.zeros((len(hmm.states), N))
+    A.fill(0)
+    B = np.zeros((len(hmm.states), N))
+    B.fill(0)
+
+    # Filling up the alpha table:
+    for k in hmm.states.values():
+        A[k,0] = hmm.pi[k]*hmm.emi[k,hmm.obs[seq[0]]]
+
+    A[:,0] = A[:,0]/sum(A[:,0])
+    
+    for n in range(1,N):
+        o = hmm.obs[seq[n]]
+        for k in hmm.states.values():
+            thesum = 0
+            if hmm.emi[k,o]!=0:
+                for j in hmm.states.values():
+                    if hmm.trans[j,k]!=0:
+                        thesum = thesum+A[j, n-1]*hmm.trans[j,k]
+                A[k,n] = thesum*hmm.emi[k,o]
+        A[:,n] = A[:,n]/sum(A[:,n])
+    
+    # Filling up the beta table:
+    B[:,N-1] = 1
+    for n in range(0,N-1)[::-1]:
+        o = hmm.obs[seq[n]]
+        for k in hmm.states.values():
+            thesum = 0
+            if hmm.emi[k,o]!=0:
+                for j in hmm.states.values():
+                    if hmm.trans[k,j]!=0:
+                        thesum = thesum+B[j, n+1]*hmm.trans[k,j]
+                B[k,n] = thesum*hmm.emi[k,o]
+        B[:,n] = B[:,n]/sum(B[:,n])
+
+    # Posterior decoding:
+    M = A*B
+
+    z = ['' for i in range(len(seq))]
+    for n in range(N):
+        z[n] = hmm.states.keys()[M[:,n].argmax()]
+    
+    return "".join(z)
+
+zobs = PosteriorScaled(sequences["FTSH_ECOLI"], hmmP)
+
+print zobs
+
+print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
+
+output = str()
+for key in sorted(sequences):
+    temp_post = Posterior(sequences[key], hmm)
+    output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
+file = open('output_posteriorScaled.txt', "w")
 file.write(output)
 file.close()
