@@ -66,7 +66,7 @@ def loadHMM(filename):
 def loadseq(filename):
     rawdata = open(filename, "r").read().split(">")
     splitdata = [i.split("#") for i in rawdata[1:]]
-    splitdata = [i[0].split("\n",1)+[i[2]] for i in splitdata]
+    splitdata = [i[0].split("\n",1)+[i[1]] for i in splitdata]
     return {i[0]:(i[1].strip(), i[2].strip()) for i in splitdata}
 
 # Loading the sequence data in a fasta format, with sequence and headers.
@@ -103,7 +103,6 @@ hmm = loadHMM("hmm-tm.txt")
 
 # Loading the sequence data.
 sequences = readFasta("sequences-project2.txt")
-
 
 def loglikelihood_M(seqpair, HMM):
     result = []
@@ -161,7 +160,6 @@ def Viterbi(seq, hmm):
 
     z = ["o" if i=="i" else i for i in z]
 
-
     #Backtrack.
     for n in range(N-1)[::-1]:
         temp = np.array([float("-inf") for i in range(len(hmm.states))])
@@ -178,6 +176,27 @@ def Viterbi(seq, hmm):
 #    temp_viterbi = Viterbi(sequences[key], hmm)
 #    print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
 
+original = loadseq('sequences-project2-viterbi.txt')
+def validation(ori_seq, actual_seq, hmm, model):
+    from pandas import DataFrame as df
+    results = []
+    for key_ori, seq_log in ori_seq.items():
+        seq_ori = seq_log[0]
+        hid_ori, log_ori = seq_log[1].split(';')
+        log_ori = float(log_ori.strip().replace('log P(x,z) = ', ''))
+        hid_now = model(sequences[key_ori], hmm) #hidden states
+        dif = 0
+        for i in range(len(hid_now)):
+            if hid_now[i] != hid_ori[i]:
+                dif += 1
+        log_dif = log_ori - loglikelihood((sequences[key_ori], hid_now), hmm)
+        results.append((key_ori, dif/float(len(hid_now)), log_dif))
+        
+    df = df(results)
+    df.columns = ['Protein','p-distance', 'Diff likelihood'] 
+    return df              
+
+print validation(original, sequences, hmm, Viterbi)
 #saving into a file:
 output = str()
 for key in sorted(sequences):
@@ -246,9 +265,9 @@ def Posterior(seq, hmm):
     
     return "".join(z)
 
-zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
-
-print zobs
+#zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
+#print zobs
+print validation(original, sequences, hmm, Posterior)
 
 #print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 
