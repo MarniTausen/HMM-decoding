@@ -147,7 +147,7 @@ def Viterbi(seq, hmm):
         for k in hmm.states.values():
             if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
-                    if hmm.trans[k,j]!=float("-inf"):
+                    if hmm.trans[j,k]!=float("-inf"):
                         M[k,n] = max([M[k,n], M[j, n-1]+hmm.emi[k,o]+hmm.trans[j,k]])
         n += 1
         
@@ -217,14 +217,14 @@ def Posterior(seq, hmm):
             logsum = float("-inf")
             if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
-                    if hmm.trans[k,j]!=float("-inf"):
+                    if hmm.trans[j,k]!=float("-inf"):
                         logsum = LOGSUM(logsum, A[j, n-1]+hmm.trans[j,k])
             if logsum!=float("-inf"):
                 logsum += hmm.emi[k,o]
             A[k,n] = logsum
     
     # Filling up the beta table:
-    B[:,N-1] = 0
+    B[:,N-1] = elog(1)
     for n in range(0,N-1)[::-1]:
         o = hmm.obs[seq[n]]
         for k in hmm.states.values():
@@ -232,7 +232,7 @@ def Posterior(seq, hmm):
             if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
                     if hmm.trans[k,j]!=float("-inf"):
-                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[j,k])
+                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[k,j])
             if logsum!=float("-inf"):
                 logsum += hmm.emi[k,o]
             B[k,n] = logsum
@@ -241,7 +241,6 @@ def Posterior(seq, hmm):
     M = A+B
 
     z = ['' for i in range(len(seq))]
-    
     for n in range(N):
         z[n] = hmm.states.keys()[M[:,n].argmax()]
     
