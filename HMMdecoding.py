@@ -246,20 +246,20 @@ def Posterior(seq, hmm):
     
     return "".join(z)
 
-#zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
+zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
 
-#print zobs
+print zobs
 
 #print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 
 
-output = str()
-for key in sorted(sequences):
-    temp_post = Posterior(sequences[key], hmm)
-    output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
-file = open('output_posterior.txt', "w")
-file.write(output)
-file.close()
+# output = str()
+# for key in sorted(sequences):
+#     temp_post = Posterior(sequences[key], hmm)
+#     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
+# file = open('output_posterior.txt', "w")
+# file.write(output)
+# file.close()
 
 from copy import deepcopy
 
@@ -285,11 +285,15 @@ def PosteriorScaled(seq, hmm):
     B = np.zeros((len(hmm.states), N))
     B.fill(0)
 
+    c = []
+    
     # Filling up the alpha table:
     for k in hmm.states.values():
         A[k,0] = hmm.pi[k]*hmm.emi[k,hmm.obs[seq[0]]]
 
-    A[:,0] = A[:,0]/sum(A[:,0])
+    c.append(A[:,0].sum())
+    A[:,0] = A[:,0]/c[0]
+
     
     for n in range(1,N):
         o = hmm.obs[seq[n]]
@@ -300,10 +304,15 @@ def PosteriorScaled(seq, hmm):
                     if hmm.trans[j,k]!=0:
                         thesum = thesum+A[j, n-1]*hmm.trans[j,k]
                 A[k,n] = thesum*hmm.emi[k,o]
-        A[:,n] = A[:,n]/sum(A[:,n])
-    
+        c.append(A[:,n].sum())
+        A[:,n] = A[:,n]/c[n]
+
+    print A[:,0:6]
+        
     # Filling up the beta table:
     B[:,N-1] = 1
+    c[N-1] = B[:,N-1].sum()
+    B[:,N-1] = B[:,N-1]/c[N-1]
     for n in range(0,N-1)[::-1]:
         o = hmm.obs[seq[n]]
         for k in hmm.states.values():
@@ -313,14 +322,30 @@ def PosteriorScaled(seq, hmm):
                     if hmm.trans[k,j]!=0:
                         thesum = thesum+B[j, n+1]*hmm.trans[k,j]
                 B[k,n] = thesum*hmm.emi[k,o]
-        B[:,n] = B[:,n]/sum(B[:,n])
+        c[n] = B[:,n].sum()
+        B[:,n] = B[:,n]/c[n]
 
+    print B[:,N-6:N]
     # Posterior decoding:
     M = A*B
 
     z = ['' for i in range(len(seq))]
+    #for n in range(N):
+    #    z[n] = hmm.states.keys()[M[:,n].argmax()]
+
     for n in range(N):
-        z[n] = hmm.states.keys()[M[:,n].argmax()]
+        cmax, kmax = 0, ''
+        maxed = False
+        for k, v in hmm.states.items():
+            if M[v,n]==cmax:
+                maxed = True
+            if M[v,n]>cmax:
+                cmax = M[v,n]
+                kmax = k
+        if maxed==True:
+            print M[:, n]
+        z[n] = kmax
+            
     
     return "".join(z)
 
@@ -330,10 +355,19 @@ print zobs
 
 print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 
-output = str()
-for key in sorted(sequences):
-    temp_post = Posterior(sequences[key], hmm)
-    output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
-file = open('output_posteriorScaled.txt', "w")
-file.write(output)
-file.close()
+# output = str()
+# for key in sorted(sequences):
+#     temp_post = PosteriorScaled(sequences[key], hmm)
+#     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
+# file = open('output_posteriorScaled.txt', "w")
+# file.write(output)
+# file.close()
+
+
+mat = np.matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+print mat
+
+print mat[:,0].sum(), mat[:,1].sum(), mat[:,2].sum()
+
+
