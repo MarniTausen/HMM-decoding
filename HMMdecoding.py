@@ -1,4 +1,5 @@
 from numpy import matrix
+import numpy as np
 
 # Object for storing all of the HMM (Hidden Markov Model) data inside.
 # Takes the output from loadHMM() and makes the data more accessible
@@ -28,13 +29,18 @@ class HMMObject(object):
             result.append(x[i*n:n*(i+1)])
         return result
 
-
 def elog(x):
     from math import log
     if x <= 0:
         return float("-inf")
     return log(x)
-    
+
+def eexp(x):
+    from math import exp
+    if x == float("-inf"):
+        return 0
+    return exp(x)
+
 # Loading the hidden markov model (hmm) data.
 # Fist by splitting the for each of the names.
 # Then collecting all of the data with the right labels in a dictionary.
@@ -124,33 +130,6 @@ def loglikelihood_M(seqpair, HMM):
 #print sequences
 # just taking one of the sequences to test
 
-import numpy as np
-
-obs = sequences['KDGL_ECOLI']
-M = np.zeros((3,len(obs)))
-i = 'i'*len(obs)
-o = 'o'*len(obs)
-m = 'M'*len(obs) 
-seqpair_i = (obs, i)
-seqpair_o = (obs, o)
-seqpair_m = (obs, m)
-
-#print seqpair_i[1][0] # states 
-#print seqpair_i[0][1] # observables
-prob_i = loglikelihood_M(seqpair_i, hmm)
-prob_o = loglikelihood_M(seqpair_o, hmm)
-prob_m = loglikelihood_M(seqpair_m, hmm)
-def filling_up(matrix, prob, position):
-    for i in range(len(prob)):
-        matrix[position,i] = prob[i]
-    return M
-
-M = filling_up(M, prob_i, 0)
-M = filling_up(M, prob_o, 1)
-M = filling_up(M, prob_m, 2)
-
-#print M
-
 def Viterbi(seq, hmm):
     # Initialize the omega table
     N = len(seq)
@@ -158,8 +137,8 @@ def Viterbi(seq, hmm):
     M.fill(float("-inf"))
 
     # Fill in the first column.
-    for v in hmm.states.values():
-        M[v,0] = hmm.pi[v]+hmm.emi[v,hmm.obs[seq[0]]]
+    for k in hmm.states.values():
+        M[k,0] = hmm.pi[k]+hmm.emi[k,hmm.obs[seq[0]]]
 
     # Fill in the remaining columns in the table.
     n = 1
@@ -208,5 +187,77 @@ file = open('output_viterbi.txt', "w")
 file.write(output)
 file.close()
 
-def Posterior():
-    pass
+#making the logsum to transform the Posterior code
+def LOGSUM(x, y): #the input is already log transformed
+    if x == float("-inf"):
+        return y
+    if y == float("-inf"):
+        return x
+    if x > y:
+        return x + elog(1 + 2**(y - x)) 
+    else:
+        return y + elog(1 + 2**(x - y))
+
+
+def Posterior(seq, hmm):
+    # Initializing the tables
+    N = len(seq)
+    A = np.zeros((len(hmm.states), N))
+    A.fill(float("-inf"))
+    B = np.zeros((len(hmm.states), N))
+    B.fill(float("-inf"))
+
+    # Filling up the alpha table:
+    for k in hmm.states.values():
+        A[k,0] = hmm.pi[k]+hmm.emi[k,hmm.obs[seq[0]]]
+    
+    for n in range(1,N):
+        o = hmm.obs[seq[n]]
+        for k in hmm.states.values():
+            logsum = float("-inf")
+            if hmm.emi[k,o]!=float("-inf"):
+                for j in hmm.states.values():
+                    if hmm.trans[k,j]!=float("-inf"):
+                        logsum = LOGSUM(logsum, A[j, n-1]+hmm.trans[j,k])
+            if logsum!=float("-inf"):
+                logsum += hmm.emi[k,o]
+            A[k,n] = logsum
+    
+    # Filling up the beta table:
+    B[:,N-1] = 0
+    for n in range(0,N-1)[::-1]:
+        o = hmm.obs[seq[n]]
+        for k in hmm.states.values():
+            logsum = float("-inf")
+            if hmm.emi[k,o]!=float("-inf"):
+                for j in hmm.states.values():
+                    if hmm.trans[k,j]!=float("-inf"):
+                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[j,k])
+            if logsum!=float("-inf"):
+                logsum += hmm.emi[k,o]
+            B[k,n] = logsum
+
+    # Posterior decoding:
+    M = A+B
+
+    z = ['' for i in range(len(seq))]
+    
+    for n in range(N):
+        z[n] = hmm.states.keys()[M[:,n].argmax()]
+    
+    return "".join(z)
+
+zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
+
+print zobs
+
+print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
+
+
+output = str()
+for key in sorted(sequences):
+    temp_post = Posterior(sequences[key], hmm)
+    output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
+file = open('output_posterior.txt', "w")
+file.write(output)
+file.close()
