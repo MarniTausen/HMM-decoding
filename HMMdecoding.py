@@ -6,9 +6,9 @@ import numpy as np
 class HMMObject(object):
 
     """
-    Contains the following variables: states (latent states), obs (observables), 
+    Contains the following variables: states (latent states), obs (observables),
     pi (priori probabilities), trans (transition probabilities), emi (emission probabilities)"""
-    
+
     # Initialization of object, preparing all of the datatypes.
     # States and obs get converted into a dictionary with the letters as keys,
     # and the values are the corresponding indices.
@@ -149,7 +149,7 @@ def Viterbi(seq, hmm):
                     if hmm.trans[j,k]!=float("-inf"):
                         M[k,n] = max([M[k,n], M[j, n-1]+hmm.emi[k,o]+hmm.trans[j,k]])
         n += 1
-        
+
     # Backtracking:
     z = ['' for i in range(len(seq))]
 
@@ -191,10 +191,10 @@ def validation(ori_seq, actual_seq, hmm, model):
                 dif += 1
         log_dif = log_ori - loglikelihood((sequences[key_ori], hid_now), hmm)
         results.append((key_ori, dif/float(len(hid_now)), log_dif))
-        
+
     df = df(results)
-    df.columns = ['Protein','p-distance', 'Diff likelihood'] 
-    return df              
+    df.columns = ['Protein','p-distance', 'Diff likelihood']
+    return df
 
 print validation(original, sequences, hmm, Viterbi)
 #saving into a file:
@@ -213,7 +213,7 @@ def LOGSUM(x, y): #the input is already log transformed
     if y == float("-inf"):
         return x
     if x > y:
-        return x + elog(1 + 2**(y - x)) 
+        return x + elog(1 + 2**(y - x))
     else:
         return y + elog(1 + 2**(x - y))
 
@@ -229,7 +229,7 @@ def Posterior(seq, hmm):
     # Filling up the alpha table:
     for k in hmm.states.values():
         A[k,0] = hmm.pi[k]+hmm.emi[k,hmm.obs[seq[0]]]
-    
+
     for n in range(1,N):
         o = hmm.obs[seq[n]]
         for k in hmm.states.values():
@@ -241,7 +241,7 @@ def Posterior(seq, hmm):
             if logsum!=float("-inf"):
                 logsum += hmm.emi[k,o]
             A[k,n] = logsum
-    
+
     # Filling up the beta table:
     B[:,N-1] = elog(1)
     for n in range(0,N-1)[::-1]:
@@ -262,7 +262,7 @@ def Posterior(seq, hmm):
     z = ['' for i in range(len(seq))]
     for n in range(N):
         z[n] = hmm.states.keys()[M[:,n].argmax()]
-    
+
     return "".join(z)
 
 #zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
@@ -285,16 +285,15 @@ from copy import deepcopy
 
 hmmP = deepcopy(hmm)
 
-for x in range(hmmP.emi.shape[0]):
-    for y in range(hmmP.emi.shape[1]):
-        hmmP.emi[x,y] = eexp(hmmP.emi[x,y])
+eexp = np.vectorize(eexp)
 
-for x in range(hmmP.trans.shape[0]):
-    for y in range(hmmP.trans.shape[1]):
-        hmmP.trans[x,y] = eexp(hmmP.trans[x,y])
+hmmP.emi = eexp(hmmP.emi)
 
-for x in range(len(hmmP.pi)):
-    hmmP.emi[x,y] = eexp(hmmP.emi[x,y])
+hmmP.trans = eexp(hmmP.trans)
+
+hmmP.pi = eexp(hmmP.pi)
+
+print hmmP.emi, hmmP.trans, hmmP.pi
 
 def PosteriorScaled(seq, hmm):
     # Initializing the tables
@@ -305,7 +304,7 @@ def PosteriorScaled(seq, hmm):
     B.fill(0)
 
     c = []
-    
+
     # Filling up the alpha table:
     for k in hmm.states.values():
         A[k,0] = hmm.pi[k]*hmm.emi[k,hmm.obs[seq[0]]]
@@ -313,7 +312,7 @@ def PosteriorScaled(seq, hmm):
     c.append(A[:,0].sum())
     A[:,0] = A[:,0]/c[0]
 
-    
+
     for n in range(1,N):
         o = hmm.obs[seq[n]]
         for k in hmm.states.values():
@@ -327,7 +326,7 @@ def PosteriorScaled(seq, hmm):
         A[:,n] = A[:,n]/c[n]
 
     print A[:,0:6]
-        
+
     # Filling up the beta table:
     B[:,N-1] = 1
     c[N-1] = B[:,N-1].sum()
@@ -364,8 +363,8 @@ def PosteriorScaled(seq, hmm):
         if maxed==True:
             print M[:, n]
         z[n] = kmax
-            
-    
+
+
     return "".join(z)
 
 zobs = PosteriorScaled(sequences["FTSH_ECOLI"], hmmP)
