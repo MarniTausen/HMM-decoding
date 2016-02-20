@@ -251,9 +251,7 @@ def Posterior(seq, hmm):
             if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
                     if hmm.trans[k,j]!=float("-inf"):
-                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[k,j])
-            if logsum!=float("-inf"):
-                logsum += hmm.emi[k,o]
+                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[k,j]+hmm.emi[k,o])
             B[k,n] = logsum
 
     # Posterior decoding:
@@ -271,14 +269,13 @@ print validation(original, sequences, hmm, Posterior)
 
 #print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 
-
-# output = str()
-# for key in sorted(sequences):
-#     temp_post = Posterior(sequences[key], hmm)
-#     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
-# file = open('output_posterior.txt', "w")
-# file.write(output)
-# file.close()
+output = str()
+for key in sorted(sequences):
+    temp_post = Posterior(sequences[key], hmm)
+    output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
+file = open('output_posterior.txt', "w")
+file.write(output)
+file.close()
 
 from copy import deepcopy
 
