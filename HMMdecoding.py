@@ -245,13 +245,13 @@ def Posterior(seq, hmm):
     # Filling up the beta table:
     B[:,N-1] = elog(1)
     for n in range(0,N-1)[::-1]:
-        o = hmm.obs[seq[n]]
+        o = hmm.obs[seq[n+1]]
         for k in hmm.states.values():
             logsum = float("-inf")
             if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
                     if hmm.trans[k,j]!=float("-inf"):
-                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[k,j]+hmm.emi[k,o])
+                        logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[k,j]+hmm.emi[j,o])
             B[k,n] = logsum
 
     # Posterior decoding:
@@ -265,6 +265,8 @@ def Posterior(seq, hmm):
 
 #zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
 #print zobs
+
+original = loadseq('sequences-project2-posterior.txt')
 print validation(original, sequences, hmm, Posterior)
 
 #print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
@@ -289,8 +291,6 @@ hmmP.emi = eexp(hmmP.emi)
 hmmP.trans = eexp(hmmP.trans)
 
 hmmP.pi = eexp(hmmP.pi)
-
-print hmmP.emi, hmmP.trans, hmmP.pi
 
 def PosteriorScaled(seq, hmm):
     # Initializing the tables
