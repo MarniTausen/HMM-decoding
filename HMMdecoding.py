@@ -248,7 +248,7 @@ def Posterior(seq, hmm):
         o = hmm.obs[seq[n+1]]
         for k in hmm.states.values():
             logsum = float("-inf")
-            if hmm.emi[k,o]!=float("-inf"):
+            if hmm.emi[j,o]!=float("-inf"):
                 for j in hmm.states.values():
                     if hmm.trans[k,j]!=float("-inf"):
                         logsum = LOGSUM(logsum, B[j, n+1]+hmm.trans[k,j]+hmm.emi[j,o])
