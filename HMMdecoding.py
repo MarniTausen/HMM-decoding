@@ -35,12 +35,6 @@ def elog(x):
         return float("-inf")
     return log(x)
 
-def eexp(x):
-    from math import exp
-    if x == float("-inf"):
-        return 0
-    return exp(x)
-
 # Loading the hidden markov model (hmm) data.
 # First by splitting the for each of the names.
 # Then collecting all of the data with the right labels in a dictionary.
@@ -146,11 +140,13 @@ def Viterbi(seq, hmm):
 
     return "".join(z)
 
-#just printing the values
-#for key in sorted(sequences):
-#    temp_viterbi = Viterbi(sequences[key], hmm)
-#    print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
+# Printing out the hidden states + observations + loglikehood
+print 'Viterbi decoding output' 
+for key in sorted(sequences):
+    temp_viterbi = Viterbi(sequences[key], hmm)
+    print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
 
+# Validating our output against the given output
 original = loadseq('sequences-project2-viterbi.txt')
 def validation(ori_seq, actual_seq, hmm, model):
     from pandas import DataFrame as df
@@ -170,9 +166,9 @@ def validation(ori_seq, actual_seq, hmm, model):
     df = df(results)
     df.columns = ['Protein','p-distance', 'Diff likelihood']
     return df
-
+print 'Validation results - Viterbi'
 print validation(original, sequences, hmm, Viterbi)
-#saving into a file:
+# Saving the output into a file:
 output = str()
 for key in sorted(sequences):
     temp_viterbi = Viterbi(sequences[key], hmm)
@@ -181,7 +177,10 @@ file = open('output_viterbi.txt', "w")
 file.write(output)
 file.close()
 
-#making the logsum to transform the Posterior code
+
+##################### Starting Posterior decoding #####################
+
+# Making the logsum to transform the data
 def LOGSUM(x, y): #the input is already log transformed
     if x == float("-inf"):
         return y
@@ -238,7 +237,6 @@ def Posterior(seq, hmm):
     return "".join(z)
 
 original = loadseq('sequences-project2-posterior.txt')
-print validation(original, sequences, hmm, Posterior)
 
 output = str()
 for key in sorted(sequences):
@@ -248,107 +246,11 @@ file = open('output_posterior.txt', "w")
 file.write(output)
 file.close()
 
-from copy import deepcopy
+print 'Posterior decoding output'
+# Printing out the hidden states + observations + loglikehood 
+for key in sorted(sequences):
+    temp_post = Posterior(sequences[key], hmm)
+    print '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
 
-
-hmmP = deepcopy(hmm)
-
-eexp = np.vectorize(eexp)
-
-hmmP.emi = eexp(hmmP.emi)
-
-hmmP.trans = eexp(hmmP.trans)
-
-hmmP.pi = eexp(hmmP.pi)
-
-def PosteriorScaled(seq, hmm):
-    # Initializing the tables
-    N = len(seq)
-    A = np.zeros((len(hmm.states), N))
-    A.fill(0)
-    B = np.zeros((len(hmm.states), N))
-    B.fill(0)
-
-    c = []
-
-    # Filling up the alpha table:
-    for k in hmm.states.values():
-        A[k,0] = hmm.pi[k]*hmm.emi[k,hmm.obs[seq[0]]]
-
-    c.append(A[:,0].sum())
-    A[:,0] = A[:,0]/c[0]
-
-    for n in range(1,N):
-        o = hmm.obs[seq[n]]
-        for k in hmm.states.values():
-            thesum = 0
-            if hmm.emi[k,o]!=0:
-                for j in hmm.states.values():
-                    if hmm.trans[j,k]!=0:
-                        thesum = thesum+A[j, n-1]*hmm.trans[j,k]
-                A[k,n] = thesum*hmm.emi[k,o]
-        c.append(A[:,n].sum())
-        A[:,n] = A[:,n]/c[n]
-
-    print A[:,0:6]
-
-    # Filling up the beta table:
-    B[:,N-1] = 1
-    c[N-1] = B[:,N-1].sum()
-    B[:,N-1] = B[:,N-1]/c[N-1]
-    for n in range(0,N-1)[::-1]:
-        o = hmm.obs[seq[n]]
-        for k in hmm.states.values():
-            thesum = 0
-            if hmm.emi[k,o]!=0:
-                for j in hmm.states.values():
-                    if hmm.trans[k,j]!=0:
-                        thesum = thesum+B[j, n+1]*hmm.trans[k,j]
-                B[k,n] = thesum*hmm.emi[k,o]
-        c[n] = B[:,n].sum()
-        B[:,n] = B[:,n]/c[n]
-
-    print B[:,N-6:N]
-    # Posterior decoding:
-    M = A*B
-
-    z = ['' for i in range(len(seq))]
-    #for n in range(N):
-    #    z[n] = hmm.states.keys()[M[:,n].argmax()]
-
-    for n in range(N):
-        cmax, kmax = 0, ''
-        maxed = False
-        for k, v in hmm.states.items():
-            if M[v,n]==cmax:
-                maxed = True
-            if M[v,n]>cmax:
-                cmax = M[v,n]
-                kmax = k
-        if maxed==True:
-            print M[:, n]
-        z[n] = kmax
-
-    return "".join(z)
-
-zobs = PosteriorScaled(sequences["FTSH_ECOLI"], hmmP)
-
-print zobs
-
-print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
-
-# output = str()
-# for key in sorted(sequences):
-#     temp_post = PosteriorScaled(sequences[key], hmm)
-#     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
-# file = open('output_posteriorScaled.txt', "w")
-# file.write(output)
-# file.close()
-
-mat = np.matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-
-print mat
-
-print mat[:,0].sum(), mat[:,1].sum(), mat[:,2].sum()
-
-
+print 'Validation results - Posterior'
+print validation(original, sequences, hmm, Posterior)
