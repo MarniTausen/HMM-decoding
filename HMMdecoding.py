@@ -166,6 +166,7 @@ def validation(ori_seq, actual_seq, hmm, model):
     df = df(results)
     df.columns = ['Protein','p-distance', 'Diff likelihood']
     return df
+    
 print 'Validation results - Viterbi'
 print validation(original, sequences, hmm, Viterbi)
 # Saving the output into a file:
