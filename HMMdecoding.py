@@ -42,7 +42,7 @@ def eexp(x):
     return exp(x)
 
 # Loading the hidden markov model (hmm) data.
-# Fist by splitting the for each of the names.
+# First by splitting the for each of the names.
 # Then collecting all of the data with the right labels in a dictionary.
 # Then the necessary data conversion
 def loadHMM(filename):
@@ -103,31 +103,6 @@ hmm = loadHMM("hmm-tm.txt")
 
 # Loading the sequence data.
 sequences = readFasta("sequences-project2.txt")
-
-def loglikelihood_M(seqpair, HMM):
-    result = []
-    # Calculating for the initial pi and the initial emission
-    result.append(HMM.emi[HMM.states[seqpair[1][0]],HMM.obs[seqpair[0][0]]])
-    result[0] += HMM.pi[HMM.states[seqpair[1][0]]]
-
-    # Storing the previous state.
-    prevstate = seqpair[1][0]
-
-    # Iterating over all of the remaining observations and latent states
-    for i in zip(seqpair[0], seqpair[1])[1:]:
-        # Transitions
-        trans = (HMM.trans[HMM.states[prevstate],HMM.states[i[1]]])
-        # Emissions
-        emi = HMM.emi[HMM.states[i[1]],HMM.obs[i[0]]]
-        result.append(trans+emi)
-        prevstate = i[1]
-
-    return result
-
-#print hmm.d
-
-#print sequences
-# just taking one of the sequences to test
 
 def Viterbi(seq, hmm):
     # Initialize the omega table
@@ -217,7 +192,6 @@ def LOGSUM(x, y): #the input is already log transformed
     else:
         return y + elog(1 + 2**(x - y))
 
-
 def Posterior(seq, hmm):
     # Initializing the tables
     N = len(seq)
@@ -263,13 +237,8 @@ def Posterior(seq, hmm):
 
     return "".join(z)
 
-#zobs = Posterior(sequences["FTSH_ECOLI"], hmm)
-#print zobs
-
 original = loadseq('sequences-project2-posterior.txt')
 print validation(original, sequences, hmm, Posterior)
-
-#print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 
 output = str()
 for key in sorted(sequences):
@@ -308,7 +277,6 @@ def PosteriorScaled(seq, hmm):
 
     c.append(A[:,0].sum())
     A[:,0] = A[:,0]/c[0]
-
 
     for n in range(1,N):
         o = hmm.obs[seq[n]]
@@ -361,7 +329,6 @@ def PosteriorScaled(seq, hmm):
             print M[:, n]
         z[n] = kmax
 
-
     return "".join(z)
 
 zobs = PosteriorScaled(sequences["FTSH_ECOLI"], hmmP)
@@ -377,7 +344,6 @@ print loglikelihood((sequences["FTSH_ECOLI"], zobs), hmm)
 # file = open('output_posteriorScaled.txt', "w")
 # file.write(output)
 # file.close()
-
 
 mat = np.matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 
