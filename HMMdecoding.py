@@ -194,6 +194,7 @@ def LOGSUM(x, y): #the input is already log transformed
     else:
         return y + elog(1 + 2**(x - y))
 
+# Function for Posterior decoding
 def Posterior(seq, hmm):
     # Initializing the tables
     N = len(seq)
@@ -241,6 +242,7 @@ def Posterior(seq, hmm):
 
 original = loadseq('sequences-project2-posterior.txt')
 
+# Output the posterior decoding results
 output = str()
 for key in sorted(sequences):
     temp_post = Posterior(sequences[key], hmm)
