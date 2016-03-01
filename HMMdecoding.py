@@ -1,18 +1,6 @@
 from numpy import matrix
 import numpy as np
 
-from sys import argv
-
-script, infile, outviterbi, outposterior = argv 
-
-if len(argv)==1:
-    infile = "sequences-project2.txt"
-    outviterbi = "output_viterbi.txt"
-    outposterior = "output_poster.txt"
-    validate = True
-if len(argv)==4:
-    validate = False
-
 # Object for storing all of the HMM (Hidden Markov Model) data inside.
 # Takes the output from loadHMM() and makes the data more accessible
 class HMMObject(object):
@@ -47,6 +35,13 @@ def elog(x):
     if x == 0:
         return float("-inf")
     return log(x)
+
+def eexp(x):
+    from math import exp
+    if x == float("-inf"):
+        return 0
+    return exp(x)
+
 
 # Loading the hidden markov model (hmm) data.
 # First by splitting the for each of the names.
@@ -110,7 +105,7 @@ def loglikelihood(seqpair, HMM):
 hmm = loadHMM("hmm-tm.txt")
 
 # Loading the sequence data.
-sequences = readFasta(infile)
+sequences = readFasta("sequences-project2.txt")
 
 def Viterbi(seq, hmm):
     # Initialize the omega table
@@ -123,34 +118,27 @@ def Viterbi(seq, hmm):
         M[k,0] = hmm.pi[k]+hmm.emi[k,hmm.obs[seq[0]]]
 
     # Fill in the remaining columns in the table.
-    n = 1
-    for i in seq[1:]:
-        o = hmm.obs[i]
+    for n in range(1, N):
+        o = hmm.obs[seq[n]]
         for k in hmm.states.values():
             if hmm.emi[k,o]!=float("-inf"):
                 for j in hmm.states.values():
                     if hmm.trans[j,k]!=float("-inf"):
                         M[k,n] = max([M[k,n], M[j, n-1]+hmm.emi[k,o]+hmm.trans[j,k]])
-        n += 1
 
     # Backtracking:
     z = ['' for i in range(len(seq))]
 
     # Find the last max:
     z[N-1] = hmm.states.keys()[M[:,N-1].argmax()]
-    for n in range(N-1)[::-1]:
-        z[n] = hmm.states.keys()[M[:,n].argmax()]
-
-    z = ["o" if i=="i" else i for i in z]
 
     #Backtrack.
     for n in range(N-1)[::-1]:
         temp = np.array([float("-inf") for i in range(len(hmm.states))])
-        o, ns = hmm.obs[seq[n+1]], hmm.states[z[n+1]]
+        o, ns = hmm.obs[seq[n]], hmm.states[z[n+1]]
         for i in hmm.states.values():
             temp[i] = hmm.emi[i,o]+M[i,n]+hmm.trans[i, ns]
         z[n] = hmm.states.keys()[temp.argmax()]
-        #print
 
     return "".join(z)
 
@@ -160,37 +148,35 @@ for key in sorted(sequences):
     temp_viterbi = Viterbi(sequences[key], hmm)
     print'>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
 
-if validate==True:
-    # Validating our output against the given output
-    original = loadseq('sequences-project2-viterbi.txt')
-    def validation(ori_seq, actual_seq, hmm, model):
-        from pandas import DataFrame as df
-        results = []
-        for key_ori, seq_log in ori_seq.items():
-            seq_ori = seq_log[0]
-            hid_ori, log_ori = seq_log[1].split(';')
-            log_ori = float(log_ori.strip().replace('log P(x,z) = ', ''))
-            hid_now = model(sequences[key_ori], hmm) #hidden states
-            dif = 0
-            for i in range(len(hid_now)):
-                if hid_now[i] != hid_ori[i]:
-                    dif += 1
-                    log_dif = log_ori - loglikelihood((sequences[key_ori], hid_now), hmm)
-                    results.append((key_ori, dif/float(len(hid_now)), log_dif))
+# Validating our output against the given output
+original = loadseq('sequences-project2-viterbi.txt')
+def validation(ori_seq, actual_seq, hmm, model):
+    from pandas import DataFrame as df
+    results = []
+    for key_ori, seq_log in ori_seq.items():
+        seq_ori = seq_log[0]
+        hid_ori, log_ori = seq_log[1].split(';')
+        log_ori = float(log_ori.strip().replace('log P(x,z) = ', ''))
+        hid_now = model(sequences[key_ori], hmm) #hidden states
+        dif = 0
+        for i in range(len(hid_now)):
+            if hid_now[i] != hid_ori[i]:
+                dif += 1
+        log_dif = log_ori - loglikelihood((sequences[key_ori], hid_now), hmm)
+        results.append((key_ori, dif/float(len(hid_now)), log_dif))
 
-                    df = df(results)
-                    df.columns = ['Protein','p-distance', 'Diff likelihood']
-                    return df
+    df = df(results)
+    df.columns = ['Protein','p-distance', 'Diff likelihood']
+    return df
     
-    print 'Validation results - Viterbi'
-    print validation(original, sequences, hmm, Viterbi)
-
+print 'Validation results - Viterbi'
+print validation(original, sequences, hmm, Viterbi)
 # Saving the output into a file:
 output = str()
 for key in sorted(sequences):
     temp_viterbi = Viterbi(sequences[key], hmm)
     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_viterbi, loglikelihood((sequences[key], temp_viterbi), hmm))
-file = open(outviterbi, "w")
+file = open('output_viterbi.txt', "w")
 file.write(output)
 file.close()
 
@@ -204,11 +190,10 @@ def LOGSUM(x, y): #the input is already log transformed
     if y == float("-inf"):
         return x
     if x > y:
-        return x + elog(1 + 2**(y - x))
+        return x + elog(1 + eexp(y - x))
     else:
-        return y + elog(1 + 2**(x - y))
+        return y + elog(1 + eexp(x - y))
 
-# Function for Posterior decoding
 def Posterior(seq, hmm):
     # Initializing the tables
     N = len(seq)
@@ -256,12 +241,11 @@ def Posterior(seq, hmm):
 
 original = loadseq('sequences-project2-posterior.txt')
 
-# Output the posterior decoding results
 output = str()
 for key in sorted(sequences):
     temp_post = Posterior(sequences[key], hmm)
     output += '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
-file = open(outposterior, "w")
+file = open('output_posterior.txt', "w")
 file.write(output)
 file.close()
 
@@ -271,6 +255,5 @@ for key in sorted(sequences):
     temp_post = Posterior(sequences[key], hmm)
     print '>%s \n%s \n#\n%s\n; log P(x,z) = %f\n' % (key, sequences[key], temp_post, loglikelihood((sequences[key], temp_post), hmm))
 
-if validate==True:
-    print 'Validation results - Posterior'
-    print validation(original, sequences, hmm, Posterior)
+print 'Validation results - Posterior'
+print validation(original, sequences, hmm, Posterior)
